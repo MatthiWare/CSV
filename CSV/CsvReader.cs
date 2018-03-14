@@ -5,7 +5,7 @@ using System.IO;
 
 namespace MatthiWare.Csv
 {
-    public class CsvReader<Row> : IEnumerable<ICsvDataRow>, IDisposable where Row : ICsvDataRow
+    public class CsvReader : IEnumerable<ICsvDataRow>, IDisposable
     {
 
         private StreamReader m_streamReader;
@@ -47,6 +47,12 @@ namespace MatthiWare.Csv
         private void Init()
         {
             m_lazyEnum = new Lazy<IEnumerator<ICsvDataRow>>(() => new CsvReaderEnumerator(m_streamReader, m_config));
+        }
+
+        public IEnumerable<ICsvDataRow> ReadRecords()
+        {
+            while (m_lazyEnum.Value.MoveNext())
+                yield return m_lazyEnum.Value.Current;
         }
 
         public IEnumerator<ICsvDataRow> GetEnumerator() => m_lazyEnum.Value;
@@ -147,26 +153,43 @@ namespace MatthiWare.Csv
                 if (m_reader.Peek() == -1 || m_reader.EndOfStream)
                     return false;
 
-                var tokens = m_reader.ReadLine().Split(m_config.ValueSeperator);
+                if (m_firstLine)
+                {
+                    var tokens = GetNextTokens();
 
-                if (m_firstLine && m_config.FirstLineIsHeader)
-                    ReadHeaders(tokens);
+                    if (m_config.FirstLineIsHeader)
+                        GetHeaders(tokens);
+                    else
+                        GetDefaultHeaders(tokens.Length);
+                }
 
-                m_current = ReadRow(tokens);
+                m_current = ReadRow(GetNextTokens());
 
                 return true;
             }
 
+            private string[] GetNextTokens()
+             => m_reader.ReadLine().Split(m_config.ValueSeperator);
 
             private ICsvDataRow ReadRow(string[] tokens)
                 => new CsvDataRow(tokens, m_headers);
 
-            private void ReadHeaders(string[] tokens)
+            private void GetHeaders(string[] tokens)
             {
                 int count = 0;
 
                 foreach (var header in tokens)
                     m_headers.Add(header, count++);
+
+                m_firstLine = false;
+            }
+
+            private void GetDefaultHeaders(int length)
+            {
+                for (int i = 0; i < length; i++)
+                    m_headers.Add($"column {i}", i);
+
+                m_reader.BaseStream.Position = 0;
             }
 
             public void Reset()
