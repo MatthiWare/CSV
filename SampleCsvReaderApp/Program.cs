@@ -19,7 +19,8 @@ namespace SampleCsvReaderApp
             {
                 foreach (var record in reader.ReadRecords())
                 {
-                    Console.WriteLine(record["policyID"]);
+                    Console.WriteLine($"PolicyID: {record["policyID"]}");
+                    Console.WriteLine($"Dynamic Line: {record.DynamicContent.line} Construction: {record.DynamicContent.construction}");
                 }
             }
         }
