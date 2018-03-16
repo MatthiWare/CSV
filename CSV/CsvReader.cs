@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
+using System.Linq;
 
 namespace MatthiWare.Csv
 {
@@ -97,10 +99,14 @@ namespace MatthiWare.Csv
             private readonly string[] m_values;
             private readonly Dictionary<string, int> m_headers;
 
+            private Lazy<dynamic> m_lazyDynamicContent;
+
             public CsvDataRow(string[] values, Dictionary<string, int> headers)
             {
                 m_values = values;
                 m_headers = headers;
+
+                m_lazyDynamicContent = new Lazy<dynamic>(CreateDynamicContent);
             }
 
             public string this[string name]
@@ -119,6 +125,25 @@ namespace MatthiWare.Csv
             public string this[int index] => Values[index];
 
             public string[] Values => m_values;
+
+            public bool IsHeaderRow => false;
+
+            public dynamic DynamicContent => m_lazyDynamicContent.Value;
+
+            public string[] Headers => m_headers.Keys.ToArray();
+
+            private dynamic CreateDynamicContent()
+            {
+                var expando = new ExpandoObject();
+                var dict = (IDictionary<string, object>)expando;
+
+                int count = 0;
+
+                foreach (var header in m_headers.Keys)
+                    dict.Add(header, m_values[count++]);
+
+                return expando;
+            }
         }
 
         private class CsvReaderEnumerator : IEnumerator<ICsvDataRow>
