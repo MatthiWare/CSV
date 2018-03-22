@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace MatthiWare.Csv
 {
@@ -21,6 +22,9 @@ namespace MatthiWare.Csv
 
             return input;
         }
+
+        public static bool CheckEndOfStream<T>(T input) where T : StreamReader
+            => input.Peek() == -1 || input.EndOfStream;
 
     }
 }

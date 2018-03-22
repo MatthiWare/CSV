@@ -11,6 +11,11 @@
     <Company>MatthiWare</Company>
     <Description>A library to load and read CSV (Comma-Seperated Values) files</Description>
     <PackageProjectUrl>https://github.com/MatthiWare/CSV</PackageProjectUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Copyright>MatthiWare 2018</Copyright>
+    <PackageLicenseUrl>https://github.com/MatthiWare/CSV/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageTags>csv csv-reader csv-files dotnet dotnet-standard dotnet-core</PackageTags>
+    <RepositoryUrl>https://github.com/MatthiWare/CSV</RepositoryUrl>
   </PropertyGroup>
 
 </Project>

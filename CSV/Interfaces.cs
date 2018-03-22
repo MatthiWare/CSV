@@ -3,8 +3,6 @@
 
     public interface ICsvDataRow
     {
-        bool IsHeaderRow { get; }
-
         dynamic DynamicContent { get; }
 
         string[] Headers { get; }

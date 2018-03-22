@@ -17,6 +17,9 @@ namespace SampleCsvReaderApp
         {
             using (var reader = new CsvReader(csv))
             {
+                var x = reader.GetHeaders();
+                Console.WriteLine(string.Join(" ", x));
+
                 foreach (var record in reader.ReadRecords())
                 {
                     Console.WriteLine($"PolicyID: {record["policyID"]}");
