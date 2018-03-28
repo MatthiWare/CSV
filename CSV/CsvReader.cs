@@ -23,6 +23,7 @@ namespace MatthiWare.Csv
         public CsvReader(string filePath, CsvConfig config = null)
             : this(config)
         {
+
             var stream = File.OpenRead(Guard.CheckNotNull(filePath, nameof(filePath)));
 
             m_streamReader = new StreamReader(stream);
