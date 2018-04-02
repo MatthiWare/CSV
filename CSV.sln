@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSV", "CSV\CSV.csproj", "{5
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleCsvReaderApp", "SampleCsvReaderApp\SampleCsvReaderApp.csproj", "{9EAF6584-B26D-408F-9794-7C1FB2F5689D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSV.Tests", "CSV.Tests\CSV.Tests.csproj", "{6DCC7DCE-68E4-402E-99AF-78A60DA4AE30}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{9EAF6584-B26D-408F-9794-7C1FB2F5689D}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{9EAF6584-B26D-408F-9794-7C1FB2F5689D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9EAF6584-B26D-408F-9794-7C1FB2F5689D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6DCC7DCE-68E4-402E-99AF-78A60DA4AE30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DCC7DCE-68E4-402E-99AF-78A60DA4AE30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DCC7DCE-68E4-402E-99AF-78A60DA4AE30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DCC7DCE-68E4-402E-99AF-78A60DA4AE30}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
