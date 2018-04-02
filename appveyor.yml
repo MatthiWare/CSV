@@ -26,7 +26,5 @@ build:
   project: .\CSV.sln
   verbosity: minimal
 test_script:
-  - C:\\projects\\CSV\\CSV\\packages\\OpenCover.4.6.519\\tools\\OpenCover.Console.exe -register:user -target:nunit3-console.exe -targetargs:"CSV\CSV.Tests\bin\Release\netstandard1.3\CSV.Tests.dll" -filter:"+[CSV*]* -[CSV.Tests*]*" -output:opencoverCoverage.xml
-  - "SET PATH=C:\\Python34;C:\\Python34\\Scripts;%PATH%"
-  - pip install codecov
-  - codecov -f "opencoverCoverage.xml"
+  - cmd: cd CSV.Tests
+  - cmd: dotnet test CSV.Tests.csproj
