@@ -4,73 +4,133 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MatthiWare.Csv
 {
     public class CsvReader : IEnumerable<ICsvDataRow>, IDisposable
     {
+        private StreamReader m_reader;
 
-        private StreamReader m_streamReader;
-        private Lazy<IEnumerator<ICsvDataRow>> m_lazyEnum;
+        public CsvConfig Config { get; private set; }
 
-        private CsvConfig m_config;
+        private Dictionary<string, int> m_headers;
+
+        private bool m_firstLine = true;
+
+        public bool EndReached => Guard.CheckEndOfStream(m_reader);
 
         private CsvReader(CsvConfig config)
         {
-            m_config = config ?? new CsvConfig();
+            Config = config ?? new CsvConfig();
+            m_headers = new Dictionary<string, int>();
         }
 
         public CsvReader(string filePath, CsvConfig config = null)
             : this(config)
         {
-
             var stream = File.OpenRead(Guard.CheckNotNull(filePath, nameof(filePath)));
 
-            m_streamReader = new StreamReader(stream);
+            m_reader = new StreamReader(stream);
 
-            Init();
-        }
-
-        public CsvReader(StreamReader reader, CsvConfig config = null)
-            : this(config)
-        {
-            m_streamReader = Guard.CheckNotNull(reader, nameof(reader));
-
-            Init();
+            CheckHeader();
         }
 
         public CsvReader(Stream inStream, CsvConfig config = null)
             : this(config)
         {
-            m_streamReader = new StreamReader(Guard.CheckNotNull(inStream, nameof(inStream)));
+            m_reader = new StreamReader(Guard.CheckNotNull(inStream, nameof(inStream)));
 
-            Init();
+            CheckHeader();
         }
 
-        private void Init()
+        public void Reset()
         {
-            m_lazyEnum = new Lazy<IEnumerator<ICsvDataRow>>(() => new CsvReaderEnumerator(m_streamReader, m_config));
+            m_headers.Clear();
+            m_firstLine = true;
+            m_reader.BaseStream.Seek(0, SeekOrigin.Begin);
+            m_reader.DiscardBufferedData();
+
+            CheckHeader();
         }
+
+        #region Headers
+
+        private void CheckHeader()
+        {
+            if (!m_firstLine)
+                return;
+
+            var tokens = GetNextTokens();
+
+            if (!Config.FirstLineIsHeader && Config.GenerateDefaultHeadersIfNotFound)
+                GetDefaultHeaders(tokens.Length);
+            else if (Config.FirstLineIsHeader)
+                GetHeaders(tokens);
+        }
+
+        private void GetHeaders(string[] tokens)
+        {
+            int count = 0;
+
+            foreach (var header in tokens)
+                m_headers.Add(header, count++);
+
+            m_firstLine = false;
+        }
+
+        private void GetDefaultHeaders(int length)
+        {
+            for (int i = 0; i < length; i++)
+                m_headers.Add($"column {i + 1}", i);
+
+            m_reader.BaseStream.Seek(0, SeekOrigin.Begin);
+            m_reader.DiscardBufferedData();
+        }
+
+        #endregion
+
+#if ASYNC_FEATURE
+        private async Task<string[]> GetNextTokensAsync()
+        {
+            var tokens = await m_reader.ReadLineAsync();
+
+            return tokens.Split(Config.ValueSeperator);
+        }
+#endif
+
+        private string[] GetNextTokens()
+            => m_reader.ReadLine().Split(Config.ValueSeperator);
+
+        #region Public API
 
         public string[] GetHeaders()
         {
-            if (!m_config.FirstLineIsHeader && !m_config.GenerateDefaultHeadersIfNotFound)
+            if (!Config.FirstLineIsHeader && !Config.GenerateDefaultHeadersIfNotFound)
                 throw new InvalidOperationException($"No headers provided in the csv file and the {nameof(CsvConfig.GenerateDefaultHeadersIfNotFound)} in the {nameof(CsvConfig)} has been turned off.");
 
-            var enumerator = (CsvReaderEnumerator)m_lazyEnum.Value;
-
-            return enumerator.GetHeaders();
+            return m_headers.Keys.ToArray();
         }
+
+        public ICsvDataRow ReadNextRow() => DeserializeRow(GetNextTokens());
+
+#if ASYNC_FEATURE
+        public async Task<ICsvDataRow> ReadNextRowAsync() => DeserializeRow(await GetNextTokensAsync());
+#endif
 
         public IEnumerable<ICsvDataRow> ReadRecords()
         {
-            while (m_lazyEnum.Value.MoveNext())
-                yield return m_lazyEnum.Value.Current;
+            foreach (var record in this)
+                yield return record;
         }
 
-        public IEnumerator<ICsvDataRow> GetEnumerator() => m_lazyEnum.Value;
+        #endregion
 
-        IEnumerator IEnumerable.GetEnumerator() => m_lazyEnum.Value;
+        private ICsvDataRow DeserializeRow(string[] tokens) => new CsvDataRow(tokens, this);
+
+        public IEnumerator<ICsvDataRow> GetEnumerator() => new CsvReaderEnumerator(this);
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -81,10 +141,13 @@ namespace MatthiWare.Csv
             {
                 if (disposing)
                 {
-                    if (m_lazyEnum.IsValueCreated)
-                        m_lazyEnum.Value.Dispose();
+                    Config = null;
 
-                    m_config = null;
+                    if (m_reader != null)
+                    {
+                        m_reader.Dispose();
+                        m_reader = null;
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
@@ -104,18 +167,19 @@ namespace MatthiWare.Csv
         }
         #endregion
 
-
         private class CsvDataRow : ICsvDataRow
         {
             private readonly string[] m_values;
-            private readonly Dictionary<string, int> m_headers;
 
             private Lazy<dynamic> m_lazyDynamicContent;
 
-            public CsvDataRow(string[] values, Dictionary<string, int> headers)
+            private readonly CsvReader m_parent;
+
+            public CsvDataRow(string[] values, CsvReader reader)
             {
                 m_values = values;
-                m_headers = headers;
+
+                m_parent = reader;
 
                 m_lazyDynamicContent = new Lazy<dynamic>(CreateDynamicContent);
             }
@@ -124,10 +188,10 @@ namespace MatthiWare.Csv
             {
                 get
                 {
-                    if (m_headers.Count == 0)
+                    if (m_parent.m_headers.Count == 0)
                         throw new InvalidOperationException($"No headers provided in the csv file and the {nameof(CsvConfig.GenerateDefaultHeadersIfNotFound)} in the {nameof(CsvConfig)} has been turned off.");
 
-                    if (!m_headers.TryGetValue(name, out int index))
+                    if (!m_parent.m_headers.TryGetValue(name, out int index))
                         throw new ArgumentException($"Header {name} does not exist.");
 
                     return Values[index];
@@ -140,17 +204,6 @@ namespace MatthiWare.Csv
 
             public dynamic DynamicContent => m_lazyDynamicContent.Value;
 
-            public string[] Headers
-            {
-                get
-                {
-                    if (m_headers.Count == 0)
-                        throw new InvalidOperationException($"No headers provided in the csv file and the {nameof(CsvConfig.GenerateDefaultHeadersIfNotFound)} in the {nameof(CsvConfig)} has been turned off.");
-
-                    return m_headers.Keys.ToArray();
-                }
-            }
-
             private dynamic CreateDynamicContent()
             {
                 var expando = new ExpandoObject();
@@ -158,7 +211,7 @@ namespace MatthiWare.Csv
 
                 int count = 0;
 
-                foreach (var header in m_headers.Keys)
+                foreach (var header in m_parent.m_headers.Keys)
                     dict.Add(header, m_values[count++]);
 
                 return expando;
@@ -173,88 +226,33 @@ namespace MatthiWare.Csv
 
             object IEnumerator.Current => m_current;
 
-            private readonly CsvConfig m_config;
-            private readonly StreamReader m_reader;
-            private Dictionary<string, int> m_headers;
+            private readonly CsvReader m_reader;
 
-            private bool m_firstLine = true;
-
-            public CsvReaderEnumerator(StreamReader reader, CsvConfig config)
+            public CsvReaderEnumerator(CsvReader reader)
             {
                 m_reader = reader;
-                m_config = config;
-                m_headers = new Dictionary<string, int>();
-            }
 
-            public string[] GetHeaders()
-            {
-                if (m_headers.Count == 0)
-                    CheckHeader();
-
-                return m_headers.Keys.ToArray();
+                m_reader.Reset();
             }
 
             public void Dispose()
             {
-                if (m_config.IsStreamOwner)
-                    m_reader.Dispose();
+
             }
 
             public bool MoveNext()
             {
-                if (Guard.CheckEndOfStream(m_reader))
+                if (m_reader.EndReached)
                     return false;
 
-                CheckHeader();
-
-                m_current = ReadRow(GetNextTokens());
+                m_current = m_reader.ReadNextRow();
 
                 return true;
             }
 
-            private void CheckHeader()
-            {
-                if (!m_firstLine)
-                    return;
-
-                var tokens = GetNextTokens();
-
-                if (!m_config.FirstLineIsHeader && m_config.GenerateDefaultHeadersIfNotFound)
-                    GetDefaultHeaders(tokens.Length);
-                else if (m_config.FirstLineIsHeader)
-                    GetHeaders(tokens);
-            }
-
-            private string[] GetNextTokens()
-                => m_reader.ReadLine().Split(m_config.ValueSeperator);
-
-            private ICsvDataRow ReadRow(string[] tokens)
-                => new CsvDataRow(tokens, m_headers);
-
-            private void GetHeaders(string[] tokens)
-            {
-                int count = 0;
-
-                foreach (var header in tokens)
-                    m_headers.Add(header, count++);
-
-                m_firstLine = false;
-            }
-
-            private void GetDefaultHeaders(int length)
-            {
-                for (int i = 0; i < length; i++)
-                    m_headers.Add($"column {i}", i);
-
-                m_reader.BaseStream.Position = 0;
-            }
-
             public void Reset()
             {
-                m_reader.BaseStream.Position = 0;
-                m_current = null;
-                m_firstLine = true;
-                m_headers.Clear();
+
             }
         }
     }

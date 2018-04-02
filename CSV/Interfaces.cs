@@ -5,8 +5,6 @@
     {
         dynamic DynamicContent { get; }
 
-        string[] Headers { get; }
-
         string[] Values { get; }
 
         string this[string name] { get; }

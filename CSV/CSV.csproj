@@ -18,6 +18,10 @@
     <RepositoryUrl>https://github.com/MatthiWare/CSV</RepositoryUrl>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)'=='netstandard1.3'">
+    <DefineConstants>ASYNC_FEATURE</DefineConstants>
+  </PropertyGroup>
+  
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard1.3'">
     <PackageReference Include="Microsoft.CSharp" Version="4.4.1" />
   </ItemGroup>
