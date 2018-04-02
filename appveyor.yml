@@ -1,6 +1,7 @@
 version: 0.2.{build}
 skip_tags: true
 configuration: Release
+image: Visual Studio 2017
 dotnet_csproj:
   patch: true
   file: '**\*.csproj'
@@ -13,9 +14,14 @@ environment:
   COVERALLS_REPO_TOKEN:
     secure: k6gJwhivEaPBnNT7CKZEks2q1yreyDbVqkZMt46mN32tgRhHhChvMLgTqrtGoG6R
   CODECOV_TOKEN:
-    secure: N+vJ8JrMwPFYRWXqX3OB2IE59laOOvt/OotFeFzOjQfApFFHVl1AxsPESs7Lcte2    
+    secure: N+vJ8JrMwPFYRWXqX3OB2IE59laOOvt/OotFeFzOjQfApFFHVl1AxsPESs7Lcte2  
+init:
+  - cmd: git config --global core.autocrlf true
 before_build:
-  - nuget restore ".\CSV.sln"
+  # display .net core version
+  - cmd: dotnet --version
+  # restore packages
+  - cmd: dotnet restore ".\CSV.sln" --verbosity m
 build:
   project: .\CSV.sln
   verbosity: minimal
