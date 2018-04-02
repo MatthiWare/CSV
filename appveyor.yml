@@ -1,0 +1,26 @@
+version: 0.2.{build}
+skip_tags: true
+configuration: Release
+dotnet_csproj:
+  patch: true
+  file: '**\*.csproj'
+  version: '{version}'
+  package_version: '{version}'
+  assembly_version: '{version}'
+  file_version: '{version}'
+  informational_version: '{version}'
+environment:
+  COVERALLS_REPO_TOKEN:
+    secure: k6gJwhivEaPBnNT7CKZEks2q1yreyDbVqkZMt46mN32tgRhHhChvMLgTqrtGoG6R
+  CODECOV_TOKEN:
+    secure: N+vJ8JrMwPFYRWXqX3OB2IE59laOOvt/OotFeFzOjQfApFFHVl1AxsPESs7Lcte2    
+before_build:
+  - nuget restore ".\CSV\CSV.sln"
+build:
+  project: .\CSV\CSV.sln
+  verbosity: minimal
+test_script:
+  - C:\\projects\\CSV\\CSV\\packages\\OpenCover.4.6.519\\tools\\OpenCover.Console.exe -register:user -target:nunit3-console.exe -targetargs:"CSV\CSV.Tests\bin\Release\netstandard1.3\CSV.Tests.dll" -filter:"+[CSV*]* -[CSV.Tests*]*" -output:opencoverCoverage.xml
+  - "SET PATH=C:\\Python34;C:\\Python34\\Scripts;%PATH%"
+  - pip install codecov
+  - codecov -f "opencoverCoverage.xml"
