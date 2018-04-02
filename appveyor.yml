@@ -15,9 +15,9 @@ environment:
   CODECOV_TOKEN:
     secure: N+vJ8JrMwPFYRWXqX3OB2IE59laOOvt/OotFeFzOjQfApFFHVl1AxsPESs7Lcte2    
 before_build:
-  - nuget restore ".\CSV\CSV.sln"
+  - nuget restore ".\CSV.sln"
 build:
-  project: .\CSV\CSV.sln
+  project: .\CSV.sln
   verbosity: minimal
 test_script:
   - C:\\projects\\CSV\\CSV\\packages\\OpenCover.4.6.519\\tools\\OpenCover.Console.exe -register:user -target:nunit3-console.exe -targetargs:"CSV\CSV.Tests\bin\Release\netstandard1.3\CSV.Tests.dll" -filter:"+[CSV*]* -[CSV.Tests*]*" -output:opencoverCoverage.xml
