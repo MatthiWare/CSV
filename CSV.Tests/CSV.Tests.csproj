@@ -12,6 +12,7 @@
     <PackageReference Include="MSTest.TestFramework" Version="1.2.0" />
     <PackageReference Include="NUnit" Version="3.9.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
+    <PackageReference Include="OpenCover" Version="4.6.831-rc" />
   </ItemGroup>
 
   <ItemGroup>

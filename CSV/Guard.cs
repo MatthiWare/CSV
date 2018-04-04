@@ -26,5 +26,7 @@ namespace MatthiWare.Csv
         public static bool CheckEndOfStream<T>(T input) where T : StreamReader
             => input.Peek() == -1 || input.EndOfStream;
 
+
+
     }
 }

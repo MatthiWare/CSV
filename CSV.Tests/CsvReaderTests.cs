@@ -64,11 +64,13 @@ namespace CSV.Tests
 
                 var same = (origContent.Count() == actualContent.Count());
                 var same2 = (!origContent.Except(actualContent).Any() || !actualContent.Except(origContent).Any());
-                   
+
 
                 Assert.IsTrue(same);
             }
         }
+
+
 
         private MemoryStream GenerateCustomInMemoryCsvFile(bool hasHeaders, string[] headers, IEnumerable<string[]> fields, string split)
         {

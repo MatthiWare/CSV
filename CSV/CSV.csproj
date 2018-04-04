@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard1.3'">
-    <DefineConstants>ASYNC_FEATURE</DefineConstants>
+    <DefineConstants>DOT_NET_STD</DefineConstants>
   </PropertyGroup>
   
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard1.3'">

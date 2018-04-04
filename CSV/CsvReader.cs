@@ -4,7 +4,10 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
+
+#if DOT_NET_STD
 using System.Threading.Tasks;
+#endif
 
 namespace MatthiWare.Csv
 {
@@ -14,32 +17,29 @@ namespace MatthiWare.Csv
 
         public CsvConfig Config { get; private set; }
 
-        private Dictionary<string, int> m_headers;
+        private Dictionary<string, int> m_headers = new Dictionary<string, int>();
 
         private bool m_firstLine = true;
 
         public bool EndReached => Guard.CheckEndOfStream(m_reader);
 
-        private CsvReader(CsvConfig config)
-        {
-            Config = config ?? new CsvConfig();
-            m_headers = new Dictionary<string, int>();
-        }
-
         public CsvReader(string filePath, CsvConfig config = null)
-            : this(config)
         {
             var stream = File.OpenRead(Guard.CheckNotNull(filePath, nameof(filePath)));
 
-            m_reader = new StreamReader(stream);
-
-            CheckHeader();
+            Init(stream, config);
         }
 
         public CsvReader(Stream inStream, CsvConfig config = null)
-            : this(config)
         {
-            m_reader = new StreamReader(Guard.CheckNotNull(inStream, nameof(inStream)));
+            Init(inStream, config);
+        }
+
+        private void Init(Stream inStream, CsvConfig inConfig)
+        {
+            Config = inConfig ?? new CsvConfig();
+
+            m_reader = new StreamReader(Config.IsStreamOwner ? inStream : new NonClosableStream(inStream));
 
             CheckHeader();
         }
@@ -90,13 +90,15 @@ namespace MatthiWare.Csv
 
         #endregion
 
-#if ASYNC_FEATURE
+#if DOT_NET_STD
+
         private async Task<string[]> GetNextTokensAsync()
         {
             var tokens = await m_reader.ReadLineAsync();
 
             return tokens.Split(Config.ValueSeperator);
         }
+
 #endif
 
         private string[] GetNextTokens()
@@ -114,7 +116,7 @@ namespace MatthiWare.Csv
 
         public ICsvDataRow ReadNextRow() => DeserializeRow(GetNextTokens());
 
-#if ASYNC_FEATURE
+#if DOT_NET_STD
         public async Task<ICsvDataRow> ReadNextRowAsync() => DeserializeRow(await GetNextTokensAsync());
 #endif
 
