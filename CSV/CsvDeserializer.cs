@@ -11,6 +11,7 @@ namespace MatthiWare.Csv
         private readonly CsvConfig m_config;
         private readonly StreamReader m_reader;
         private readonly Dictionary<string, int> m_headers = new Dictionary<string, int>();
+        private readonly Mapper m_mapper;
 
         private bool m_firstLine = true;
 
@@ -20,6 +21,7 @@ namespace MatthiWare.Csv
         {
             m_reader = new StreamReader(reader);
             m_config = config;
+            m_mapper = new Mapper();
 
             CheckHeader();
         }
@@ -77,7 +79,7 @@ namespace MatthiWare.Csv
             var model = CreateModel();
             var tokens = GetNextTokens();
 
-            Mapper.Map(model, m_headers, tokens);
+            m_mapper.Map(model, m_headers, tokens);
 
             return model;
         }
@@ -88,7 +90,7 @@ namespace MatthiWare.Csv
             var tokens = GetNextTokensAsync();
             var model = CreateModel();
 
-            Mapper.Map(model, m_headers, await tokens);
+            m_mapper.Map(model, m_headers, await tokens);
 
             return model;
         }
@@ -120,6 +122,9 @@ namespace MatthiWare.Csv
                     m_reader?.Dispose();
 
                     m_headers?.Clear();
+
+                    if (m_config.ReleaseCacheOnDispose)
+                        m_mapper?.ReleaseCache();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.

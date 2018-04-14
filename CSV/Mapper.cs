@@ -5,23 +5,20 @@ using System.Reflection;
 
 namespace MatthiWare.Csv
 {
-    internal static class Mapper
+    internal class Mapper
     {
         private static readonly Type CSV_COLUMN_ATTR = typeof(CsvColumnAttribute);
 
-        private static readonly Dictionary<Type, PropertyInfo[]> m_propertyCache = new Dictionary<Type, PropertyInfo[]>();
-        private static readonly Dictionary<PropertyInfo, string> m_columnCache = new Dictionary<PropertyInfo, string>();
+        private readonly Dictionary<Type, PropertyInfo[]> m_propertyCache = new Dictionary<Type, PropertyInfo[]>();
+        private readonly Dictionary<PropertyInfo, string> m_columnCache = new Dictionary<PropertyInfo, string>();
 
-        [ThreadStatic]
-        private static readonly object sync = new object();
-
-        public static void Map<T>(T model, IDictionary<string, int> headers, string[] raw)
+        public void Map<T>(T model, IDictionary<string, int> headers, string[] raw)
         {
             var properties = GetPropertiesCached(typeof(T));
 
             foreach (var prop in properties)
             {
-                var rawValue = raw[headers.GetHeaderIndex(GetColumnNameCached(prop))];
+                var rawValue = raw[GetHeaderIndex(headers, GetColumnNameCached(prop))];
 
                 prop.SetValue(model,
                     (prop.PropertyType == typeof(string) ? rawValue : Convert.ChangeType(rawValue, prop.PropertyType)),
@@ -29,7 +26,7 @@ namespace MatthiWare.Csv
             }
         }
 
-        private static int GetHeaderIndex(this IDictionary<string, int> self, string clmnName)
+        private int GetHeaderIndex(IDictionary<string, int> self, string clmnName)
         {
             if (!self.TryGetValue(clmnName, out int value))
                 throw new InvalidOperationException("Column name not specified");
@@ -37,52 +34,50 @@ namespace MatthiWare.Csv
             return value;
         }
 
-        private static string GetColumnNameCached(PropertyInfo property)
+        private string GetColumnNameCached(PropertyInfo property)
         {
-            lock (sync)
-            {
-                if (m_columnCache.TryGetValue(property, out string value))
-                    return value;
-
-                value = GetColumnName(property);
-
-                m_columnCache.Add(property, value);
-
+            if (m_columnCache.TryGetValue(property, out string value))
                 return value;
-            }
+
+            value = GetColumnName(property);
+
+            m_columnCache.Add(property, value);
+
+            return value;
         }
 
-        private static string GetColumnName(PropertyInfo property)
+        private string GetColumnName(PropertyInfo property)
             => ((CsvColumnAttribute)property.GetCustomAttributes(CSV_COLUMN_ATTR, false).First()).ColumnName;
 
-        private static PropertyInfo[] GetPropertiesCached(Type type)
+        private PropertyInfo[] GetPropertiesCached(Type type)
         {
-            lock (sync)
-            {
-                if (m_propertyCache.TryGetValue(type, out PropertyInfo[] value))
-                    return value;
-
-                value = GetProperties(type).ToArray();
-
-                m_propertyCache.Add(type, value);
-
+            if (m_propertyCache.TryGetValue(type, out PropertyInfo[] value))
                 return value;
-            }
+
+            value = GetProperties(type).ToArray();
+
+            m_propertyCache.Add(type, value);
+
+            return value;
         }
 
 #if DOT_NET_STD
-        private static IEnumerable<PropertyInfo> GetProperties(Type type)
+        private IEnumerable<PropertyInfo> GetProperties(Type type)
             => type.GetTypeInfo()
             .DeclaredProperties
             .Where(prop => prop.GetCustomAttributes(CSV_COLUMN_ATTR, false).Any());
 #else
-        private static IEnumerable<PropertyInfo> GetProperties(Type type)
+        private IEnumerable<PropertyInfo> GetProperties(Type type)
             => type
             .GetProperties()
             .Where(prop => prop.GetCustomAttributes(CSV_COLUMN_ATTR, false).Any());
 #endif
 
-
+        public void ReleaseCache()
+        {
+            m_columnCache.Clear();
+            m_propertyCache.Clear();
+        }
 
     }
 }

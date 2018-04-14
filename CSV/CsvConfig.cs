@@ -10,5 +10,6 @@
 
         public bool IsStreamOwner { get; set; } = true;
 
+        public bool ReleaseCacheOnDispose { get; set; } = true;
     }
 }
