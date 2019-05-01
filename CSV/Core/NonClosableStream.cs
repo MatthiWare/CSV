@@ -52,7 +52,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("CSV.Tests")]
 
-namespace MatthiWare.Csv
+namespace MatthiWare.Csv.Core
 {
     internal class NonClosableStream : Stream
     {

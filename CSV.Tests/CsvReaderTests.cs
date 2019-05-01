@@ -1,11 +1,9 @@
+using MatthiWare.Csv;
+using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-
-using MatthiWare.Csv;
-
-using NUnit.Framework;
 
 namespace CSV.Tests
 {
@@ -20,7 +18,7 @@ namespace CSV.Tests
 
             using (var reader = new CsvReader(file))
             {
-                var headers = reader.GetHeaders();
+                var headers = reader.Headers;
 
                 Assert.AreEqual(originalHeaders, headers);
 
@@ -31,13 +29,13 @@ namespace CSV.Tests
         public void ReadsCorrectGeneratedHeaders()
         {
             var originalHeaders = new[] { "column 1", "column 2", "column 3" };
-            var file = GenerateCustomInMemoryCsvFile(false, null, Enumerable.Repeat(new[] { "1", "2", "3" }, 3), ",");
+            var file = GenerateCustomInMemoryCsvFile(null, Enumerable.Repeat(new[] { "1", "2", "3" }, 3), ",");
 
             var config = new CsvConfig { FirstLineIsHeader = false };
 
             using (var reader = new CsvReader(file, config))
             {
-                var headers = reader.GetHeaders();
+                var headers = reader.Headers;
 
                 Assert.AreEqual(originalHeaders, headers);
             }
@@ -52,14 +50,14 @@ namespace CSV.Tests
                 .Append(new[] { "7", "8", "9" });
 
             var origContentArr = origContent.ToArray();
-            var file = GenerateCustomInMemoryCsvFile(false, null, origContent, ",");
+            var file = GenerateCustomInMemoryCsvFile(null, origContent, ",");
 
             var config = new CsvConfig { FirstLineIsHeader = false };
 
             using (var reader = new CsvReader(file, config))
             {
 
-                var actualContent = reader.ReadRecords().Select(row => row.Values);
+                var actualContent = reader.ReadRows().Select(row => row.Values).ToArray();
                 var content = actualContent.ToArray();
 
                 var same = (origContent.Count() == actualContent.Count());
@@ -72,13 +70,12 @@ namespace CSV.Tests
 
 
 
-        private MemoryStream GenerateCustomInMemoryCsvFile(bool hasHeaders, string[] headers, IEnumerable<string[]> fields, string split)
+        private MemoryStream GenerateCustomInMemoryCsvFile(string[] headers, IEnumerable<string[]> fields, string split)
         {
             var memory = new MemoryStream();
-
             var sw = new StreamWriter(memory);
-
             var sb = new StringBuilder();
+            var hasHeaders = headers != null;
 
             if (hasHeaders)
             {
@@ -106,7 +103,6 @@ namespace CSV.Tests
             memory.Position = 0;
 
             return memory;
-
         }
     }
 }

@@ -1,10 +1,8 @@
-﻿using System;
-
-using MatthiWare.Csv;
+﻿using MatthiWare.Csv.Attributes;
+using System;
 
 namespace SampleCsvReaderApp.Models
 {
-    [Serializable]
     public class SampleModel
     {
         [CsvColumn("policyID")]

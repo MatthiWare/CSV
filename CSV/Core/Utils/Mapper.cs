@@ -1,18 +1,19 @@
-﻿using System;
+﻿using MatthiWare.Csv.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace MatthiWare.Csv
+namespace MatthiWare.Csv.Core.Utils
 {
-    internal class Mapper
+    internal class Mapper : IDisposable
     {
         private static readonly Type CSV_COLUMN_ATTR = typeof(CsvColumnAttribute);
 
         private readonly Dictionary<Type, PropertyInfo[]> m_propertyCache = new Dictionary<Type, PropertyInfo[]>();
         private readonly Dictionary<PropertyInfo, string> m_columnCache = new Dictionary<PropertyInfo, string>();
 
-        public void Map<T>(T model, IDictionary<string, int> headers, string[] raw)
+        public void Map<T>(T model, IList<string> headers, string[] raw)
         {
             var properties = GetPropertiesCached(typeof(T));
 
@@ -26,12 +27,14 @@ namespace MatthiWare.Csv
             }
         }
 
-        private int GetHeaderIndex(IDictionary<string, int> self, string clmnName)
+        private int GetHeaderIndex(IList<string> self, string clmnName)
         {
-            if (!self.TryGetValue(clmnName, out int value))
+            var index = self.IndexOf(clmnName);
+
+            if (index == -1)
                 throw new InvalidOperationException("Column name not specified");
 
-            return value;
+            return index;
         }
 
         private string GetColumnNameCached(PropertyInfo property)
@@ -60,24 +63,15 @@ namespace MatthiWare.Csv
 
             return value;
         }
-
-#if DOT_NET_STD
         private IEnumerable<PropertyInfo> GetProperties(Type type)
             => type.GetTypeInfo()
             .DeclaredProperties
             .Where(prop => prop.GetCustomAttributes(CSV_COLUMN_ATTR, false).Any());
-#else
-        private IEnumerable<PropertyInfo> GetProperties(Type type)
-            => type
-            .GetProperties()
-            .Where(prop => prop.GetCustomAttributes(CSV_COLUMN_ATTR, false).Any());
-#endif
 
-        public void ReleaseCache()
+        public void Dispose()
         {
             m_columnCache.Clear();
             m_propertyCache.Clear();
         }
-
     }
 }

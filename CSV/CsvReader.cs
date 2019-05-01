@@ -1,21 +1,23 @@
-﻿using System;
-using System.Collections;
+﻿using MatthiWare.Csv.Abstractions;
+using MatthiWare.Csv.Core;
+using MatthiWare.Csv.Core.Utils;
+using System;
 using System.Collections.Generic;
 using System.IO;
-
-#if DOT_NET_STD
+using System.Text;
 using System.Threading.Tasks;
-#endif
 
 namespace MatthiWare.Csv
 {
-    public class CsvReader<T> : IEnumerable<T>, IDisposable where T : new()
+    public class CsvReader : ICsvReader
     {
-        public CsvConfig Config { get; private set; }
+        protected readonly CsvDeserializer m_serializer;
 
-        private readonly CsvDeserializer<T> m_serializer;
+        public bool HasData => !m_serializer.EndReached;
 
-        public bool EndReached => m_serializer?.EndReached ?? true;
+        public CsvConfig Config { get; }
+
+        public IReadOnlyCollection<string> Headers => m_serializer.Headers;
 
         public CsvReader(string filePath, CsvConfig config = null)
             : this(File.OpenRead(Guard.CheckNotNull(filePath, nameof(filePath))), config)
@@ -27,170 +29,49 @@ namespace MatthiWare.Csv
         {
             Config = config ?? new CsvConfig();
 
-            m_serializer = new CsvDeserializer<T>(
-                Config.IsStreamOwner ?
-                input :
-                new NonClosableStream(input),
+            m_serializer = new CsvDeserializer(
+                Config.IsStreamOwner ? input : new NonClosableStream(input),
                 Config);
         }
 
-        #region Public API
-
-        public string[] GetHeaders() => m_serializer.GetHeaders();
-
-        public IEnumerable<T> ReadRecords()
+        public IEnumerable<ICsvDataRow> ReadRows()
         {
-            foreach (var record in this)
-                yield return record;
+            while (!m_serializer.EndReached)
+                yield return m_serializer.ReadRow();
         }
 
-#if DOT_NET_STD
-        public async Task<T> ReadNextRowAsync() => await m_serializer.DeserializeRowAsync();
-#endif
-
-        public T ReadNextRow() => m_serializer.DeserializeRow();
-
-        public void Reset() => m_serializer.Reset();
-
-        #endregion
-
-        #region IEnumerable Support
-
-        public IEnumerator<T> GetEnumerator() => new CsvReaderEnumerator<T>(this);
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        #endregion
-
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        public IEnumerable<Task<ICsvDataRow>> ReadRowsAsync()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    Config = null;
-
-                    m_serializer?.Dispose();
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
-                disposedValue = true;
-            }
+            while (!m_serializer.EndReached)
+                yield return m_serializer.ReadRowAsync();
         }
 
-        // This code added to correctly implement the disposable pattern.
+        public ICsvDataRow ReadRow() => m_serializer.ReadRow();
+
+        public Task<ICsvDataRow> ReadRowAsync() => m_serializer.ReadRowAsync();
+
+
+        public IEnumerable<T> ReadRows<T>() where T : class, new()
+        {
+            while (!m_serializer.EndReached)
+                yield return m_serializer.ReadRow<T>();
+        }
+
+        public IEnumerable<Task<T>> ReadRowsAsync<T>() where T : class, new()
+        {
+            while (!m_serializer.EndReached)
+                yield return m_serializer.ReadRowAsync<T>();
+        }
+
+        public T ReadRow<T>() where T : class, new()
+            => m_serializer.ReadRow<T>();
+
+        public Task<T> ReadRowAsync<T>() where T : class, new()
+            => m_serializer.ReadRowAsync<T>();
+
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+            m_serializer.Dispose();
         }
-        #endregion
-
-        //private class CsvDataRow : ICsvDataRow
-        //{
-        //    private readonly string[] m_values;
-
-        //    private Lazy<dynamic> m_lazyDynamicContent;
-
-        //    private readonly CsvReader<T> m_parent;
-
-        //    public CsvDataRow(string[] values, CsvReader<T> reader)
-        //    {
-        //        m_values = values;
-
-        //        m_parent = reader;
-
-        //        m_lazyDynamicContent = new Lazy<dynamic>(CreateDynamicContent);
-        //    }
-
-        //    public string this[string name]
-        //    {
-        //        get
-        //        {
-        //            if (m_parent.m_headers.Count == 0)
-        //                throw new InvalidOperationException($"No headers provided in the csv file and the {nameof(CsvConfig.GenerateDefaultHeadersIfNotFound)} in the {nameof(CsvConfig)} has been turned off.");
-
-        //            if (!m_parent.m_headers.TryGetValue(name, out int index))
-        //                throw new ArgumentException($"Header {name} does not exist.");
-
-        //            return Values[index];
-        //        }
-        //    }
-
-        //    public string this[int index] => Values[index];
-
-        //    public string[] Values => m_values;
-
-        //    public dynamic DynamicContent => m_lazyDynamicContent.Value;
-
-        //    private dynamic CreateDynamicContent()
-        //    {
-        //        var expando = new ExpandoObject();
-        //        var dict = (IDictionary<string, object>)expando;
-
-        //        int count = 0;
-
-        //        foreach (var header in m_parent.m_headers.Keys)
-        //            dict.Add(header, m_values[count++]);
-
-        //        return expando;
-        //    }
-        //}
-
-        private class CsvReaderEnumerator<TModel> : IEnumerator<TModel> where TModel : new()
-        {
-            private TModel m_current;
-
-            public TModel Current => m_current;
-
-            object IEnumerator.Current => m_current;
-
-            private readonly CsvReader<TModel> m_reader;
-
-            public CsvReaderEnumerator(CsvReader<TModel> reader)
-            {
-                m_reader = reader;
-
-                m_reader.Reset();
-            }
-
-            public void Dispose()
-            {
-
-            }
-
-            public bool MoveNext()
-            {
-                if (m_reader.EndReached)
-                    return false;
-
-                m_current = m_reader.ReadNextRow();
-
-                return true;
-            }
-
-            public void Reset()
-            {
-
-            }
-        }
-    }
-
-    public class CsvReader : CsvReader<dynamic>
-    {
-        public CsvReader(string filePath, CsvConfig config = null)
-            : base(filePath, config)
-        { }
-
-        public CsvReader(Stream input, CsvConfig config = null)
-            : base(input, config)
-        { }
     }
 }

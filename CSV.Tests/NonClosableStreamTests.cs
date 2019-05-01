@@ -1,9 +1,7 @@
-﻿using System;
-using System.IO;
-
-using MatthiWare.Csv;
-
+﻿using MatthiWare.Csv.Core;
 using NUnit.Framework;
+using System;
+using System.IO;
 
 namespace CSV.Tests
 {

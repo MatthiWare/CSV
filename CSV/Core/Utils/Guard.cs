@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace MatthiWare.Csv
+namespace MatthiWare.Csv.Core.Utils
 {
     internal static class Guard
     {

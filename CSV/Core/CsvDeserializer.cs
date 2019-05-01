@@ -1,16 +1,17 @@
-﻿using System;
+﻿using MatthiWare.Csv.Core.Utils;
+
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
-namespace MatthiWare.Csv
+namespace MatthiWare.Csv.Core
 {
-    internal class CsvDeserializer<T> : IDisposable where T : new()
+    public class CsvDeserializer : IDisposable
     {
         private readonly CsvConfig m_config;
         private readonly StreamReader m_reader;
-        private readonly Dictionary<string, int> m_headers = new Dictionary<string, int>();
+        private readonly List<string> m_headers = new List<string>();
         private readonly Mapper m_mapper;
 
         private bool m_firstLine = true;
@@ -53,20 +54,18 @@ namespace MatthiWare.Csv
 
         private void GetHeaders(string[] tokens)
         {
-            int count = 0;
-
             foreach (var header in tokens)
-                m_headers.Add(header, count++);
+                m_headers.Add(header);
 
             m_firstLine = false;
         }
 
-        public string[] GetHeaders() => m_headers.Keys.ToArray();
+        public IReadOnlyCollection<string> Headers => m_headers;
 
         private void GetDefaultHeaders(int length)
         {
             for (int i = 0; i < length; i++)
-                m_headers.Add($"column {i + 1}", i);
+                m_headers.Add($"column {i + 1}");
 
             m_reader.BaseStream.Seek(0, SeekOrigin.Begin);
             m_reader.DiscardBufferedData();
@@ -74,9 +73,26 @@ namespace MatthiWare.Csv
 
         #endregion
 
-        public T DeserializeRow()
+        public ICsvDataRow ReadRow() => CreateDataRow(GetNextTokens());
+
+        public async Task<ICsvDataRow> ReadRowAsync() => CreateDataRow(await GetNextTokensAsync());
+
+        private ICsvDataRow CreateDataRow(string[] tokens)
         {
-            var model = CreateModel();
+            var items = new List<CsvDataItem>();
+
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                items.Add(new CsvDataItem(m_headers[i], tokens[i]));
+            }
+
+            return new CsvDataRow(items);
+        }
+
+        public T ReadRow<T>()
+            where T : class, new()
+        {
+            var model = CreateModel<T>();
             var tokens = GetNextTokens();
 
             m_mapper.Map(model, m_headers, tokens);
@@ -84,28 +100,42 @@ namespace MatthiWare.Csv
             return model;
         }
 
-#if DOT_NET_STD
-        public async Task<T> DeserializeRowAsync()
+        public async Task<T> ReadRowAsync<T>()
+            where T : class, new()
         {
             var tokens = GetNextTokensAsync();
-            var model = CreateModel();
+            var model = CreateModel<T>();
 
             m_mapper.Map(model, m_headers, await tokens);
 
             return model;
         }
-#endif
 
-        private T CreateModel() => (T)Activator.CreateInstance(typeof(T));
+        private T CreateModel<T>()
+            where T : class, new()
+        {
+            if (typeof(T) is object)
+                return CreateDynamicModel();
 
-#if DOT_NET_STD
+            return (T)Activator.CreateInstance(typeof(T));
+        }
+
+        private dynamic CreateDynamicModel()
+        {
+            var instance = new DynamicModel();
+
+            foreach (var key in m_headers)
+                instance.AddProperty(key, null);
+
+            return instance;
+        }
+
         private async Task<string[]> GetNextTokensAsync()
         {
             var tokens = await m_reader.ReadLineAsync();
 
             return tokens.Split(m_config.ValueSeperator);
         }
-#endif
 
         private string[] GetNextTokens()
             => m_reader.ReadLine().Split(m_config.ValueSeperator);
@@ -124,7 +154,7 @@ namespace MatthiWare.Csv
                     m_headers?.Clear();
 
                     if (m_config.ReleaseCacheOnDispose)
-                        m_mapper?.ReleaseCache();
+                        m_mapper?.Dispose();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
