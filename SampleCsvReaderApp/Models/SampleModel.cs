@@ -1,5 +1,4 @@
 ﻿using MatthiWare.Csv.Attributes;
-using System;
 
 namespace SampleCsvReaderApp.Models
 {

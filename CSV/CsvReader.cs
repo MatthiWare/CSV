@@ -1,10 +1,8 @@
 ﻿using MatthiWare.Csv.Abstractions;
 using MatthiWare.Csv.Core;
 using MatthiWare.Csv.Core.Utils;
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace MatthiWare.Csv
@@ -29,21 +27,23 @@ namespace MatthiWare.Csv
         {
             Config = config ?? new CsvConfig();
 
-            m_serializer = new CsvDeserializer(
-                Config.IsStreamOwner ? input : new NonClosableStream(input),
-                Config);
+            m_serializer = new CsvDeserializer( input, Config);
         }
 
         public IEnumerable<ICsvDataRow> ReadRows()
         {
             while (!m_serializer.EndReached)
+            {
                 yield return m_serializer.ReadRow();
+            }
         }
 
         public IEnumerable<Task<ICsvDataRow>> ReadRowsAsync()
         {
             while (!m_serializer.EndReached)
+            {
                 yield return m_serializer.ReadRowAsync();
+            }
         }
 
         public ICsvDataRow ReadRow() => m_serializer.ReadRow();
@@ -54,13 +54,17 @@ namespace MatthiWare.Csv
         public IEnumerable<T> ReadRows<T>() where T : class, new()
         {
             while (!m_serializer.EndReached)
+            {
                 yield return m_serializer.ReadRow<T>();
+            }
         }
 
         public IEnumerable<Task<T>> ReadRowsAsync<T>() where T : class, new()
         {
             while (!m_serializer.EndReached)
+            {
                 yield return m_serializer.ReadRowAsync<T>();
+            }
         }
 
         public T ReadRow<T>() where T : class, new()

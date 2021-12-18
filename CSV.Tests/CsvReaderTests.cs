@@ -143,7 +143,9 @@ namespace CSV.Tests
             if (hasHeaders)
             {
                 for (int i = 0; i < headers.Length; i++)
+                {
                     sb.Append(headers[i]).Append(i == headers.Length - 1 ? string.Empty : split);
+                }
 
                 var header = sb.ToString();
                 sw.WriteLine(header);
@@ -154,7 +156,9 @@ namespace CSV.Tests
             foreach (var row in fields)
             {
                 for (int i = 0; i < row.Length; i++)
+                {
                     sb.Append(row[i]).Append(i == row.Length - 1 ? string.Empty : split);
+                }
 
                 sw.WriteLine(sb.ToString());
 

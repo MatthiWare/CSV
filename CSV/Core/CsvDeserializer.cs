@@ -1,4 +1,5 @@
-﻿using MatthiWare.Csv.Core.Utils;
+﻿using MatthiWare.Csv.Abstractions;
+using MatthiWare.Csv.Core.Utils;
 
 using System;
 using System.Collections.Generic;
@@ -9,66 +10,74 @@ namespace MatthiWare.Csv.Core
 {
     public class CsvDeserializer : IDisposable
     {
-        private readonly CsvConfig m_config;
-        private readonly StreamReader m_reader;
-        private readonly List<string> m_headers = new List<string>();
-        private readonly Mapper m_mapper;
+        private readonly CsvConfig config;
+        private readonly StreamReader reader;
+        private readonly List<string> headers = new();
+        private readonly Mapper mapper;
 
-        private bool m_firstLine = true;
+        private bool headersRead = false;
 
-        public bool EndReached => Guard.CheckEndOfStream(m_reader);
+        public bool EndReached => Guard.CheckEndOfStream(reader);
 
         public CsvDeserializer(Stream reader, CsvConfig config)
         {
-            m_reader = new StreamReader(reader);
-            m_config = config;
-            m_mapper = new Mapper();
-
-            CheckHeader();
+            this.reader = new StreamReader(reader);
+            this.config = config;
+            mapper = new Mapper();
         }
 
         public void Reset()
         {
-            m_headers.Clear();
-            m_firstLine = true;
-            m_reader.BaseStream.Seek(0, SeekOrigin.Begin);
-            m_reader.DiscardBufferedData();
-
-            CheckHeader();
+            headers.Clear();
+            headersRead = false;
+            reader.BaseStream.Seek(0, SeekOrigin.Begin);
+            reader.DiscardBufferedData();
         }
 
         #region Headers
 
         private void CheckHeader()
         {
-            if (!m_firstLine)
+            if (headersRead)
+            {
                 return;
+            }
 
             var tokens = GetNextTokens();
 
-            if (!m_config.FirstLineIsHeader && m_config.GenerateDefaultHeadersIfNotFound)
+            if (!config.FirstLineIsHeader && config.GenerateDefaultHeadersIfNotFound)
+            {
                 GetDefaultHeaders(tokens.Length);
-            else if (m_config.FirstLineIsHeader)
+            }
+            else if (config.FirstLineIsHeader)
+            {
                 GetHeaders(tokens);
+            }
         }
 
         private void GetHeaders(string[] tokens)
         {
             foreach (var header in tokens)
-                m_headers.Add(header);
+            {
+                headers.Add(header);
+            }
 
-            m_firstLine = false;
+            headersRead = true;
         }
 
-        public IReadOnlyCollection<string> Headers => m_headers;
+        public IReadOnlyCollection<string> Headers => headers;
 
         private void GetDefaultHeaders(int length)
         {
             for (int i = 0; i < length; i++)
-                m_headers.Add($"column {i + 1}");
+            {
+                headers.Add($"column {i + 1}");
+            }
 
-            m_reader.BaseStream.Seek(0, SeekOrigin.Begin);
-            m_reader.DiscardBufferedData();
+            reader.BaseStream.Seek(0, SeekOrigin.Begin);
+            reader.DiscardBufferedData();
+
+            headersRead = true;
         }
 
         #endregion
@@ -83,7 +92,7 @@ namespace MatthiWare.Csv.Core
 
             for (int i = 0; i < tokens.Length; i++)
             {
-                items.Add(new CsvDataItem(m_headers[i], tokens[i]));
+                items.Add(new CsvDataItem(headers[i], tokens[i]));
             }
 
             return new CsvDataRow(items);
@@ -92,10 +101,10 @@ namespace MatthiWare.Csv.Core
         public T ReadRow<T>()
             where T : class, new()
         {
-            var model = CreateModel<T>();
             var tokens = GetNextTokens();
+            var model = CreateModel<T>();
 
-            m_mapper.Map(model, m_headers, tokens);
+            mapper.Map(model, headers, tokens);
 
             return model;
         }
@@ -106,39 +115,31 @@ namespace MatthiWare.Csv.Core
             var tokens = GetNextTokensAsync();
             var model = CreateModel<T>();
 
-            m_mapper.Map(model, m_headers, await tokens);
+            mapper.Map(model, headers, await tokens);
 
             return model;
         }
 
-        private T CreateModel<T>()
+        private static T CreateModel<T>()
             where T : class, new()
         {
-            if (typeof(T) is object)
-                return CreateDynamicModel();
-
             return (T)Activator.CreateInstance(typeof(T));
-        }
-
-        private dynamic CreateDynamicModel()
-        {
-            var instance = new DynamicModel();
-
-            foreach (var key in m_headers)
-                instance.AddProperty(key, null);
-
-            return instance;
         }
 
         private async Task<string[]> GetNextTokensAsync()
         {
-            var tokens = await m_reader.ReadLineAsync();
+            CheckHeader();
 
-            return tokens.Split(m_config.ValueSeperator);
+            var tokens = await reader.ReadLineAsync();
+
+            return tokens.Split(config.ValueSeperator);
         }
 
         private string[] GetNextTokens()
-            => m_reader.ReadLine().Split(m_config.ValueSeperator);
+        {
+            CheckHeader();
+            return reader.ReadLine().Split(config.ValueSeperator);
+        }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -149,12 +150,14 @@ namespace MatthiWare.Csv.Core
             {
                 if (disposing)
                 {
-                    m_reader?.Dispose();
+                    reader?.Dispose();
 
-                    m_headers?.Clear();
+                    headers?.Clear();
 
-                    if (m_config.ReleaseCacheOnDispose)
-                        m_mapper?.Dispose();
+                    if (config.ReleaseCacheOnDispose)
+                    {
+                        mapper?.Dispose();
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.

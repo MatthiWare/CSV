@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
 
-namespace MatthiWare.Csv
+namespace MatthiWare.Csv.Abstractions
 {
 
     public interface ICsvDataRow
     {
-        dynamic Row { get; }
-
         IReadOnlyList<string> Values { get; }
 
         string this[string name] { get; }
