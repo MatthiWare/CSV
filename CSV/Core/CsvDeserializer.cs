@@ -36,7 +36,7 @@ namespace MatthiWare.Csv.Core
 
         #region Headers
 
-        private void CheckHeader()
+        public void ReadHeaders()
         {
             if (headersRead)
             {
@@ -45,11 +45,11 @@ namespace MatthiWare.Csv.Core
 
             var tokens = GetNextTokens();
 
-            if (!config.FirstLineIsHeader && config.GenerateDefaultHeadersIfNotFound)
+            if (!config.FirstLineIsHeader)
             {
                 GetDefaultHeaders(tokens.Length);
             }
-            else if (config.FirstLineIsHeader)
+            else
             {
                 GetHeaders(tokens);
             }
@@ -65,13 +65,18 @@ namespace MatthiWare.Csv.Core
             headersRead = true;
         }
 
-        public IReadOnlyCollection<string> Headers => headers;
+        public IReadOnlyCollection<string> GetHeaders()
+        {
+            ReadHeaders();
+
+            return headers;
+        }
 
         private void GetDefaultHeaders(int length)
         {
             for (int i = 0; i < length; i++)
             {
-                headers.Add($"column {i + 1}");
+                headers.Add($"header {i + 1}");
             }
 
             reader.BaseStream.Seek(0, SeekOrigin.Begin);
@@ -128,8 +133,6 @@ namespace MatthiWare.Csv.Core
 
         private async Task<string[]> GetNextTokensAsync()
         {
-            CheckHeader();
-
             var tokens = await reader.ReadLineAsync();
 
             return tokens.Split(config.ValueSeperator);
@@ -137,7 +140,6 @@ namespace MatthiWare.Csv.Core
 
         private string[] GetNextTokens()
         {
-            CheckHeader();
             return reader.ReadLine().Split(config.ValueSeperator);
         }
 

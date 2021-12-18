@@ -9,13 +9,13 @@ namespace MatthiWare.Csv
 {
     public class CsvReader : ICsvReader
     {
-        protected readonly CsvDeserializer m_serializer;
+        private readonly CsvDeserializer reader;
 
-        public bool HasData => !m_serializer.EndReached;
+        public bool HasData => !reader.EndReached;
 
         public CsvConfig Config { get; }
 
-        public IReadOnlyCollection<string> Headers => m_serializer.Headers;
+        public IReadOnlyCollection<string> Headers => reader.GetHeaders();
 
         public CsvReader(string filePath, CsvConfig config = null)
             : this(File.OpenRead(Guard.CheckNotNull(filePath, nameof(filePath))), config)
@@ -27,55 +27,76 @@ namespace MatthiWare.Csv
         {
             Config = config ?? new CsvConfig();
 
-            m_serializer = new CsvDeserializer( input, Config);
+            reader = new CsvDeserializer(input, Config);
         }
 
         public IEnumerable<ICsvDataRow> ReadRows()
         {
-            while (!m_serializer.EndReached)
+            reader.ReadHeaders();
+
+            while (!reader.EndReached)
             {
-                yield return m_serializer.ReadRow();
+                yield return reader.ReadRow();
             }
         }
 
         public IEnumerable<Task<ICsvDataRow>> ReadRowsAsync()
         {
-            while (!m_serializer.EndReached)
+            reader.ReadHeaders();
+
+            while (!reader.EndReached)
             {
-                yield return m_serializer.ReadRowAsync();
+                yield return reader.ReadRowAsync();
             }
         }
 
-        public ICsvDataRow ReadRow() => m_serializer.ReadRow();
+        public ICsvDataRow ReadRow()
+        {
+            reader.ReadHeaders();
+            return reader.ReadRow();
+        }
 
-        public Task<ICsvDataRow> ReadRowAsync() => m_serializer.ReadRowAsync();
-
+        public Task<ICsvDataRow> ReadRowAsync()
+        {
+            reader.ReadHeaders();
+            return reader.ReadRowAsync();
+        }
 
         public IEnumerable<T> ReadRows<T>() where T : class, new()
         {
-            while (!m_serializer.EndReached)
+            reader.ReadHeaders();
+
+            while (!reader.EndReached)
             {
-                yield return m_serializer.ReadRow<T>();
+                yield return reader.ReadRow<T>();
             }
         }
 
         public IEnumerable<Task<T>> ReadRowsAsync<T>() where T : class, new()
         {
-            while (!m_serializer.EndReached)
+            reader.ReadHeaders();
+
+            while (!reader.EndReached)
             {
-                yield return m_serializer.ReadRowAsync<T>();
+                yield return reader.ReadRowAsync<T>();
             }
         }
 
         public T ReadRow<T>() where T : class, new()
-            => m_serializer.ReadRow<T>();
+        {
+            reader.ReadHeaders();
+            return reader.ReadRow<T>();
+        }
 
         public Task<T> ReadRowAsync<T>() where T : class, new()
-            => m_serializer.ReadRowAsync<T>();
+        {
+            reader.ReadHeaders();
+            return reader.ReadRowAsync<T>();
+        }
 
         public void Dispose()
         {
-            m_serializer.Dispose();
+            reader.Dispose();
         }
     }
 }

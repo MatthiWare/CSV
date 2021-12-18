@@ -37,7 +37,7 @@ namespace CSV.Tests
         [Test]
         public void ReadsCorrectHeaders()
         {
-            var originalHeaders = new[] { "header1", "header2" };
+            var originalHeaders = new[] { "1", "2", "3" };
             var file = GenerateCustomInMemoryCsvFile(originalHeaders, Enumerable.Repeat(new[] { "1", "2", "3" }, 3));
 
             using (var reader = new CsvReader(file))
@@ -51,7 +51,7 @@ namespace CSV.Tests
         [Test]
         public void ReadsCorrectGeneratedHeaders()
         {
-            var originalHeaders = new[] { "column 1", "column 2", "column 3" };
+            var originalHeaders = new[] { "header 1", "header 2", "header 3" };
             var file = GenerateCustomInMemoryCsvFile(null, Enumerable.Repeat(new[] { "1", "2", "3" }, 3));
 
             var config = new CsvConfig { FirstLineIsHeader = false };
@@ -79,7 +79,6 @@ namespace CSV.Tests
 
             using (var reader = new CsvReader(file, config))
             {
-
                 var actualContent = reader.ReadRows().Select(row => row.Values).ToArray();
                 var content = actualContent.ToArray();
 
@@ -94,9 +93,9 @@ namespace CSV.Tests
         [Theory]
         [TestCase(true)]
         [TestCase(false)]
-        public void CheckCsvReaderContentIsCorrect(bool async)
+        public async Task CheckCsvReaderContentIsCorrect(bool async)
         {
-            var headers = new[] { "header_1", "header_2", "header_3" };
+            var headers = new[] { "header 1", "header 2", "header 3" };
             var row1 = new[] { "1", "2", "3" };
             var row2 = new[] { "4", "5", "6" };
             var row3 = new[] { "7", "8", "9" };
@@ -107,7 +106,6 @@ namespace CSV.Tests
                 .Append(row2)
                 .Append(row3);
 
-            var origContentArr = origContent.ToArray();
             var file = GenerateCustomInMemoryCsvFile(null, origContent);
 
             using (var reader = new CsvReader(file))
@@ -116,9 +114,9 @@ namespace CSV.Tests
 
                 if (async)
                 {
-                    Assert.AreEqual(row1, reader.ReadRowAsync().Result.Values.ToArray());
-                    Assert.AreEqual(row2, reader.ReadRowAsync().Result.Values.ToArray());
-                    Assert.AreEqual(row3, reader.ReadRowAsync().Result.Values.ToArray());
+                    Assert.AreEqual(row1, (await reader.ReadRowAsync()).Values.ToArray());
+                    Assert.AreEqual(row2, (await reader.ReadRowAsync()).Values.ToArray());
+                    Assert.AreEqual(row3, (await reader.ReadRowAsync()).Values.ToArray());
                 }
                 else
                 {
