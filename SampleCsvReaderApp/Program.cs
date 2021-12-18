@@ -1,6 +1,6 @@
-﻿using System;
-
-using MatthiWare.Csv;
+﻿using MatthiWare.Csv;
+using SampleCsvReaderApp.Models;
+using System;
 
 namespace SampleCsvReaderApp
 {
@@ -17,13 +17,12 @@ namespace SampleCsvReaderApp
         {
             using (var reader = new CsvReader(csv))
             {
-                var x = reader.GetHeaders();
+                var x = reader.Headers;
                 Console.WriteLine(string.Join(" ", x));
 
-                foreach (var record in reader.ReadRecords())
+                foreach (var record in reader.ReadRows<SampleModel>())
                 {
-                    Console.WriteLine($"PolicyID: {record["policyID"]}");
-                    Console.WriteLine($"Dynamic Line: {record.DynamicContent.line} Construction: {record.DynamicContent.construction}");
+                    Console.WriteLine($"ID: {record.ID}; County: {record.County}; Limit: {record.Limit}; Granularity: {record.Granularity}");
                 }
             }
         }
